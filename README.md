@@ -208,6 +208,10 @@ Bela nggak cuma bot biasa. Dia punya emosi, bisa baper, manja, ngeselin, dan ngo
 git clone https://github.com/jhon338-jc/BotBelaV2.git
 cd BotBelaV2
 
+## 📝 License
+
+ISC © 2026 jhon338-jc
+
 ---
 
 ## 👥 Kontributor
@@ -225,9 +229,3 @@ Project ini awalnya dibuat oleh [Chomosuke9](https://github.com/Chomosuke9) (Bag
 - Bot on/off per chat
 - 9Router multi-provider support
 - Dan banyak lagi
-
----
-
-## 📝 License
-
-ISC © 2026 jhon338-jc
