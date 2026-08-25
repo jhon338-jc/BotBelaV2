@@ -1,4 +1,3 @@
-````markdown
 # 🤖 Bot Bela V2
 
 [![Node 18+](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
