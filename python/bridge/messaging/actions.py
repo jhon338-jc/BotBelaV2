@@ -16,6 +16,72 @@ ACTION_LINE_RE = re.compile(r"^\[?\s*(REPLY_TO|REACT_TO|STICKER)\s*[:=]\s*(.*?)\
 REACT_TOKEN_RE = re.compile(r"^(.+?)@(\d{6})$")
 
 
+def _contains_tool_call_xml(text: str) -> bool:
+  """Detect leaked XML tool_call syntax that must never reach the chat."""
+  if not text:
+    return False
+  lowered = text.lower()
+  return "<tool_call>" in lowered or "<function=" in lowered or "</tool_call>" in lowered or "<parameter=" in lowered
+
+
+def _extract_tool_call_from_xml(text: str) -> list[dict]:
+  """Parse leaked XML tool_call into proper action dicts."""
+  actions: list[dict] = []
+  pattern = re.compile(
+    r"<function=([^>]+)>(.*?)</function>",
+    re.DOTALL | re.IGNORECASE,
+  )
+  for match in pattern.finditer(text):
+    func_name = match.group(1).strip().lower()
+    params_raw = match.group(2)
+    params: dict[str, str] = {}
+    param_pattern = re.compile(
+      r"<parameter=([^>]+)>([^<]*)</parameter>",
+      re.DOTALL | re.IGNORECASE,
+    )
+    for pm in param_pattern.finditer(params_raw):
+      key = pm.group(1).strip().lower()
+      value = pm.group(2).strip()
+      params[key] = value
+
+    if func_name == "reply_message":
+      reply_text = params.get("text", "").strip()
+      if reply_text:
+        actions.append({
+          "type": "send_message",
+          "text": reply_text,
+          "replyTo": params.get("context_msg_id") or None,
+        })
+      raw_command = params.get("command", "").strip()
+      if raw_command and raw_command.lower() not in {"null", "none", "nil", "/"}:
+        if not raw_command.startswith("/"):
+          raw_command = "/" + raw_command
+        actions.append({
+          "type": "run_command",
+          "command": raw_command,
+          "contextMsgId": params.get("command_context_msg_id") or params.get("context_msg_id") or None,
+        })
+    elif func_name == "react_to_message":
+      emoji = params.get("emoji", "").strip()
+      ctx_id = params.get("context_msg_id", "").strip()
+      if emoji and ctx_id:
+        actions.append({
+          "type": "react_message",
+          "contextMsgId": ctx_id,
+          "emoji": emoji,
+        })
+    elif func_name == "send_sticker":
+      sticker_name = params.get("sticker_name", "").strip()
+      ctx_id = params.get("context_msg_id", "").strip()
+      if sticker_name and ctx_id:
+        actions.append({
+          "type": "send_sticker",
+          "stickerName": sticker_name,
+          "replyTo": ctx_id,
+        })
+  return actions
+
+
 def _extract_reply_text(msg) -> str | None:
   if hasattr(msg, "content") and isinstance(msg.content, str):
     return msg.content.strip()
@@ -64,7 +130,6 @@ def _parse_react_context_ids(
   *,
   allowed_context_ids: set[str],
 ) -> list[str]:
-  """Parse ``REACT_TO:<NNNNNN,NNNNNN,...>`` value into a list of context message IDs."""
   token_value = _unwrap_angle_group(token)
   if not token_value:
     return []
@@ -98,6 +163,13 @@ def _extract_actions(
   text = _extract_reply_text(msg)
   if not text:
     return []
+  if _contains_tool_call_xml(text):
+    parsed = _extract_tool_call_from_xml(text)
+    if parsed:
+      logger.info("parsed leaked tool_call XML into %d action(s)", len(parsed))
+      return parsed
+    logger.warning("failed to parse leaked tool_call XML; dropping")
+    return []
 
   actions: list[dict] = []
   orphan_lines: list[str] = []
@@ -115,8 +187,6 @@ def _extract_actions(
       return
     body_text = "\n".join(reply_lines).strip()
     if body_text:
-      # Note: sanitization is done centrally in gateway.py:send_message()
-      # before the text is sent, so we don't sanitize here.
       actions.append(
         {
           "type": "send_message",
@@ -148,7 +218,6 @@ def _extract_actions(
     marker = ACTION_LINE_RE.match(stripped)
     if not marker:
       if sticker_declared and stripped:
-        # Next non-empty line after STICKER: is the sticker name
         actions.append(
           {
             "type": "send_sticker",
@@ -217,9 +286,6 @@ def _extract_actions(
 
   orphan_text = "\n".join(orphan_lines).strip()
   if orphan_text and not actions:
-    # LLM2 gave a plain-text response without calling any tools
-    # or using any control lines → send it as a message directly.
-    # Note: sanitization is done centrally in gateway.py:send_message().
     actions.append({
       "type": "send_message",
       "text": orphan_text,
@@ -239,39 +305,29 @@ def _extract_actions(
 
 _MEMORY_DELETE_RE = re.compile(
   r"^/(?:memory|memo|mem)\b"
-  r"(\s+(?:global|default))?"           # optional scope prefix
+  r"(\s+(?:global|default))?"
   r"\s+(?:delete|del|remove|rm)\b"
-  r"\s+(.+)$",                           # indices
+  r"\s+(.+)$",
   re.IGNORECASE,
 )
 _MEMORY_ADD_RE = re.compile(
   r"^/(?:memory|memo|mem)\b"
-  r"(\s+(?:global|default))?"           # optional scope prefix
+  r"(\s+(?:global|default))?"
   r"\s+add\b"
-  r"\s+(.+)$",                           # text
+  r"\s+(.+)$",
   re.IGNORECASE,
 )
 
 
 def _coalesce_memory_commands(actions: list[dict]) -> list[dict]:
-  """Merge multiple ``/memory delete`` run_commands into one and ensure
-  deletes execute before adds (same scope).
-
-  Node's ``deleteMemoriesByIndices`` resolves all indices against a single
-  snapshot, so ``/memory delete 2,4`` works correctly.  Without this
-  coalescing the Python dispatch loop would issue separate sequential
-  ``run_command`` frames, each causing a fresh snapshot → index-shift bug.
-  """
   run_cmds = [a for a in actions if a.get("type") == "run_command"]
   non_run = [a for a in actions if a.get("type") != "run_command"]
 
   if not run_cmds:
     return actions
 
-  # Phase 1: parse every memory-related run_command.
-  # keyed by scope → {"", " global"} respectively.
-  delete_by_scope: dict[str, list[tuple[int, str]]] = {}  # scope → [(index, anchor)]
-  add_by_scope: dict[str, list[dict]] = {}                # scope → [action dicts]
+  delete_by_scope: dict[str, list[tuple[int, str]]] = {}
+  add_by_scope: dict[str, list[dict]] = {}
   non_memory: list[dict] = []
 
   for action in run_cmds:
@@ -296,16 +352,13 @@ def _coalesce_memory_commands(actions: list[dict]) -> list[dict]:
 
     non_memory.append(action)
 
-  # If nothing was coalesced, return unchanged.
   has_deletes = any(v for v in delete_by_scope.values())
   has_adds = any(v for v in add_by_scope.values())
   if not has_deletes and not has_adds:
     return actions
 
-  # Phase 2: rebuild the run_command list.
   result: list[dict] = []
   for scope in sorted(set(list(delete_by_scope) + list(add_by_scope))):
-    # Deletes first (indices sorted ascending, deduplicated).
     entries = delete_by_scope.get(scope, [])
     if entries:
       seen_idx: set[int] = set()
@@ -327,7 +380,6 @@ def _coalesce_memory_commands(actions: list[dict]) -> list[dict]:
         "command": merged,
         "contextMsgId": anchor_first,
       })
-    # Then adds.
     result.extend(add_by_scope.get(scope, []))
 
   if has_deletes:
@@ -337,14 +389,8 @@ def _coalesce_memory_commands(actions: list[dict]) -> list[dict]:
       len(delete_by_scope),
     )
 
-  # Reassemble: non-run_command actions first (preserves send_message order),
-  # then the reordered/coalesced run_commands.
   return non_run + result + non_memory
 
-
-# ---------------------------------------------------------------------------
-# Tool-call-based action extraction (replaces _extract_actions for LLM2)
-# ---------------------------------------------------------------------------
 
 def _extract_actions_from_tool_calls(
   tool_calls: list,
@@ -352,7 +398,6 @@ def _extract_actions_from_tool_calls(
   fallback_reply_to: str | None,
   allowed_context_ids: set[str],
 ) -> list[dict]:
-  """Convert LLM2 tool calls into the same action dicts that the dispatch loop expects."""
   if not tool_calls:
     return []
 
@@ -365,9 +410,13 @@ def _extract_actions_from_tool_calls(
       continue
     args = extract_tool_args(tc)
 
+    for key, value in list(args.items()):
+      if isinstance(value, str) and _contains_tool_call_xml(value):
+        logger.warning("dropping leaked tool_call XML in arg %s", key)
+        args[key] = ""
+
     if name == "reply_message":
       text = str(args.get("text") or "").strip()
-      # Note: sanitization is done centrally in gateway.py:send_message().
       if not text:
         continue
       reply_to = _resolve_reply_target(
@@ -381,17 +430,6 @@ def _extract_actions_from_tool_calls(
         "replyTo": reply_to,
       })
 
-      # Optional `command` parameter: dispatched to the Node gateway as
-      # `run_command` action(s) *after* the text reply. Commands run
-      # silently — they are NOT posted as WhatsApp messages. Strict-mode
-      # tool calls always populate `command` (with `null` when unused),
-      # so we treat null/empty as "no command".
-      #
-      # The command anchor (which message it operates on, e.g. which
-      # image `/sticker` should turn into a sticker) defaults to the
-      # same message as the text reply (`reply_to`). The model can
-      # override this via `command_context_msg_id` — either a parallel
-      # array (one anchor per command) or a single value for all.
       raw_command = args.get("command")
       command_texts: list[str] = []
       if isinstance(raw_command, list):
@@ -417,7 +455,6 @@ def _extract_actions_from_tool_calls(
         else:
           ctx_ids = [None] * len(command_texts)
 
-        # Extend ctx_ids with None if shorter than command_texts
         while len(ctx_ids) < len(command_texts):
           ctx_ids.append(None)
 
@@ -475,11 +512,9 @@ def _extract_actions_from_tool_calls(
     elif name == "send_quiz":
       question = str(args.get("question") or "").strip()
       if not question:
-        logger.warning("send_quiz ignored: missing question")
         continue
       raw_choices = args.get("choices") or []
       if not isinstance(raw_choices, list) or len(raw_choices) < 2:
-        logger.warning("send_quiz ignored: need at least 2 choices")
         continue
       choices = []
       for ch in raw_choices:
@@ -489,27 +524,17 @@ def _extract_actions_from_tool_calls(
         text = str(ch.get("text") or "").strip()
         if not label or not text:
           continue
-        # Sanitize label: extract first letter only.
-        # The LLM sometimes over-specifies e.g. label="B,text:" or
-        # label="C,text" — keep just the leading letter.
         label = re.sub(r'[^A-Za-z]', '', label)
         if label:
           label = label[0].upper()
         if not label:
           continue
-        # Strip leading separator chars from text that leaked from a
-        # malformed label e.g. text=". Cari info" → "Cari info".
         text = re.sub(r'^[\s:;,.\-]+', '', text)
         if not text:
           continue
-        # Enforce 20-char hard cap on text just in case LLM overshoots
         text = text[:20]
-        choices.append({
-          "label": label,
-          "text": text,
-        })
+        choices.append({"label": label, "text": text})
       if len(choices) < 2:
-        logger.warning("send_quiz ignored: fewer than 2 valid choices after validation")
         continue
       reply_to = _resolve_reply_target(
         args.get("context_msg_id"),
@@ -537,27 +562,16 @@ def _extract_actions_from_tool_calls(
       if isinstance(ctx_ids, str):
         ctx_ids = [ctx_ids]
 
-      # Normalize and validate context msg ids
       valid_ids: list[str] = []
       seen_ids: set[str] = set()
       invalid_ids: list[str] = []
       for raw in ctx_ids:
-        # Some OpenAI-compatible providers serialize the schema's nullable
-        # value as the string ``"None"`` (occasionally inside a one-item
-        # array) instead of JSON null.  It still means "no input files" and
-        # must not invalidate an otherwise executable subtask.  Keep genuine
-        # unknown IDs fail-closed below.
-        if raw is None or (
-          isinstance(raw, str) and _is_empty_target_token(raw)
-        ):
+        if raw is None or (isinstance(raw, str) and _is_empty_target_token(raw)):
           continue
         cid = _normalize_context_msg_id(raw)
         if not cid or not cid.isdigit() or len(cid) != 6:
           invalid_ids.append(str(raw))
           continue
-        # Unlike reply targets, an empty allowed set means there are no known
-        # context messages to attach. Never let a plausible-looking six-digit
-        # hallucination through to lazy media download.
         if cid not in allowed_context_ids:
           invalid_ids.append(cid)
           continue
@@ -567,18 +581,10 @@ def _extract_actions_from_tool_calls(
         valid_ids.append(cid)
 
       if invalid_ids:
-        logger.warning(
-          "execute_subtask ignored: invalid or unavailable context ids=%s",
-          invalid_ids,
-        )
-        # Keep the confirmation coupled to the executable action: otherwise
-        # the user sees "starting now" even though no task can be submitted.
+        logger.warning("execute_subtask ignored: invalid or unavailable context ids=%s", invalid_ids)
         continue
 
-      # If confirmation_text is provided, send it immediately.
-      # If there are input files, reply to the last file; otherwise use fallback_reply_to.
       if confirmation_text:
-        # Note: sanitization is done centrally in gateway.py:send_message().
         conf_reply_to = valid_ids[-1] if valid_ids else fallback_reply_to
         actions.append({
           "type": "send_message",

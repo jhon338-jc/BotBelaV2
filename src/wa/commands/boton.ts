@@ -7,7 +7,17 @@ async function handleBoton({ chatId, repos, sock, senderIsOwner }: CommandContex
     return;
   }
   if (!repos) return;
+  
+  // Aktifin bot
   setChatEnabled(repos, chatId, true);
+  
+  // Auto-set model ke BELA_UTAMA
+  try {
+    repos.model.setLlm2Model(chatId, "BELA_UTAMA");
+  } catch (err) {
+    // ignore — model default tetep kepake
+  }
+  
   await sock?.sendMessage(chatId, { text: "Bot udah aktif di chat ini! 🔥" });
 }
 

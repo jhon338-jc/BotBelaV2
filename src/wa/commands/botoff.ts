@@ -7,7 +7,10 @@ async function handleBotoff({ chatId, repos, sock, senderIsOwner }: CommandConte
     return;
   }
   if (!repos) return;
+  
+  // Matiin bot
   setChatEnabled(repos, chatId, false);
+  
   await sock?.sendMessage(chatId, { text: "Bot udah dimatiin di chat ini 😴" });
 }
 

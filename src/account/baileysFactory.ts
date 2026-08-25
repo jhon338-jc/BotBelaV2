@@ -1206,6 +1206,7 @@ function attachCommandListener(
         // Python bridge won't trigger LLM1 on them, preventing response loops.
 
         const fromId = msg.key.participant || msg.key.remoteJid;
+        const fromMe = Boolean(msg.key.fromMe);
         const senderId = (normalizeJid(fromId) || fromId) as string;
 
         logger.info(
@@ -1273,7 +1274,7 @@ function attachCommandListener(
           chatType,
           senderId,
           senderIsAdmin,
-          senderIsOwner: isOwnerJid(senderId, account.botOwnerJids),
+          senderIsOwner: isOwnerJid(senderId, account.botOwnerJids) || fromMe,
           senderRole: isGroup
             ? roleFlagsForJid(group?.participantRoles, senderId)
             : { isAdmin: false, isSuperAdmin: false },
@@ -1281,7 +1282,7 @@ function attachCommandListener(
           botIsAdmin,
           botIsSuperAdmin,
           contextMsgId: msg.key.id,
-          fromMe: Boolean(msg.key.fromMe),
+          fromMe,
           text,
           group,
           msg,

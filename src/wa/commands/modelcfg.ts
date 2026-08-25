@@ -317,6 +317,14 @@ async function handleModelcfg({ chatId, senderId: _senderId, args, folderPath = 
         return;
       }
       const [modelId] = subArgs;
+      
+      // PROTECTION: BELA_UTAMA cannot be removed
+      if (modelId === "BELA_UTAMA") {
+        try {
+          await sock.sendMessage(chatId, { text: '❌ Model BELA_UTAMA tidak bisa dihapus!' });
+        } catch (err) { /* ignore */ }
+        return;
+      }
       const result = repos!.model.deleteModel(modelId);
       if (result.success) {
         registry.sendReliableToClient(folderPath, { type: 'invalidate_default_model', folderPath });
@@ -656,6 +664,11 @@ export const modelcfgButton: ButtonHandler = {
 
     if (action === "remove") {
       if (modelId) {
+        // PROTECTION: BELA_UTAMA cannot be removed
+        if (modelId === "BELA_UTAMA") {
+          await sock.sendMessage(chatId, { text: "❌ Model BELA_UTAMA tidak bisa dihapus!" });
+          return;
+        }
         const result = account.repos!.model.deleteModel(modelId);
         if (result.success) {
           registry.sendReliableToClient(account.folderPath, {
