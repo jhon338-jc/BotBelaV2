@@ -1,6 +1,4 @@
-Oke, ini README.md yang udah gue update dengan **cara setup lengkap**:
-
-```markdown
+````markdown
 # 🤖 Bot Bela V2
 
 [![Node 18+](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
@@ -8,220 +6,496 @@ Oke, ini README.md yang udah gue update dengan **cara setup lengkap**:
 [![License](https://img.shields.io/badge/license-ISC-lightgrey)](./package.json)
 [![GitHub stars](https://img.shields.io/github/stars/jhon338-jc/BotBelaV2?style=social)](https://github.com/jhon338-jc/BotBelaV2)
 
-**BELA V2** — WhatsApp AI bot cewek Indonesia yang imut, gemes, gaul, dan punya kepribadian nyata. Dia bisa ngobrol natural, nyimpen memory, bikin stiker, download video, manage grup, RVO view-once, dan masih banyak lagi — semua TANPA harus pake slash command!
+**BELA V2** — WhatsApp AI bot cewek Indonesia yang imut, gemes, gaul, dan punya kepribadian nyata.
+
+Bela bisa ngobrol natural, menyimpan memory, membuat stiker, download video, mengelola grup, membaca view-once, scheduling, dan masih banyak lagi.
+
+> 💗 **Bela bukan sekadar bot biasa.**  
+> Bela memiliki sistem personality, memory, multi-provider AI, group management, media system, dan berbagai fitur otomatis.
 
 ---
 
 ## 📑 Daftar Isi
 
-- [Fitur Utama](#-fitur-utama)
-- [Semua Command](#-semua-command)
-- [Cara Install](#-cara-install)
-- [Cara Setup Bot](#-cara-setup-bot)
-- [Cara Setup 9Router](#-cara-setup-9router)
-- [Cara Pairing WhatsApp](#-cara-pairing-whatsapp)
-- [Cara Ganti Owner](#-cara-ganti-owner)
-- [Cara Ganti Model AI](#-cara-ganti-model-ai)
-- [Cara Bot On/Off Per Chat](#-cara-bot-onoff-per-chat)
-- [Konfigurasi](#-konfigurasi)
-- [Mode Respons](#-mode-respons)
-- [Permission Level](#-permission-level)
-- [FAQ](#-faq)
-- [License](#-license)
-- [Kontributor](#-kontributor)
+- [✨ Fitur Utama](#-fitur-utama)
+- [📋 Semua Command](#-semua-command)
+- [🚀 Cara Install](#-cara-install)
+- [⚙️ Konfigurasi](#️-konfigurasi)
+- [🔀 9Router Setup](#-9router-setup)
+- [🎭 Mode Respons](#-mode-respons)
+- [🔐 Permission Level](#-permission-level)
+- [❓ FAQ](#-faq)
+- [📝 License](#-license)
+- [👥 Kontributor](#-kontributor)
+- [⚠️ Disclaimer](#️-disclaimer)
 
 ---
 
-## ✨ Fitur Utama
+# ✨ Fitur Utama
 
-### 🎭 AI Kepribadian
-- Cewek Indonesia umur 18 tahun yang manis, lembut, imut, dan gemes
-- Bisa basa-basi, grogi, malu-malu, baper, excited, moody
-- Paham bahasa natural — tanpa slash command
-- Auto-save memory — ingat user selamanya
-- Paham semua variasi panggilan: Bel, Bell, Bela, Bella, Belll
-- Ngobrol dewasa (18+) natural tanpa sensor
-- Support multi-provider AI via 9Router (fallback otomatis)
+## 🎭 AI Personality
 
-### 📥 Download Video
-- TikTok, YouTube, Instagram, Facebook
-- Tinggal kirim link, bot langsung download
-
-### 🎨 Stiker
-- Stiker dari gambar/video (`/sticker`)
-- Stiker Brat dari teks (`/stikerteks`)
-- Katalog stiker custom (`/add-sticker`, `/remove-sticker`)
-
-### 🔓 RVO (View-Once)
-- Buka pesan view-once yang di-reply
-- Support gambar, video, dan audio
-- Bisa dipake semua orang
-
-### 🛡️ Group Management
-- Kick / Add / Mute / Delete / Pin
-- Ganti nama grup, PP grup, deskripsi grup
-- Ambil link invite grup
-- Tutup / buka grup
-- Permission level (0-3)
-
-### 🧠 Memory System
-- Auto-save fakta user
-- Memory global & per-chat
-- Lihat/hapus memory
-
-### ⏰ Scheduling
-- Jadwalkan tugas (`/schedule-task`)
-- Tugas harian (`/daily-task`)
-- Idle trigger (`/idle`)
-
-### 🖼️ PAP & Media
-- PAP random (`/pap`)
-- PAP memek (`/papmmk`) — owner only
-- PAP susu (`/paptt`) — owner only
-- PAP bugil (`/papbugil`) — owner only
-
-### 👑 Owner Features
-- Broadcast, config, generate, revoke, join, monitor
-- Bot on/off per chat (`/boton`, `/botoff`)
-- Model config, memory, subagent, update
+- Cewek Indonesia umur 18 tahun
+- Manis, lembut, imut, dan gemes
+- Bisa basa-basi
+- Bisa grogi dan malu-malu
+- Bisa baper
+- Bisa excited
+- Bisa moody
+- Memahami bahasa natural
+- Tidak harus menggunakan slash command
+- Auto-save memory
+- Support berbagai panggilan seperti:
+  - Bela
+  - Bel
+  - Bell
+  - Bella
+  - Belll
+  - Ayang Bela
+- Support percakapan 18+
+- Multi-provider AI melalui 9Router
+- Automatic fallback provider
+- Bahasa Indonesia santai dan natural
 
 ---
 
-## 📋 Semua Command
+## 📥 Download Video
 
-### 🟢 Public (Semua Orang)
+Support download dari berbagai platform:
 
-| Command | Deskripsi |
-|---------|-----------|
-| `/menubela` | Menu fitur utama |
-| `/download <link>` | Download video |
-| `/sticker` | Stiker dari gambar (reply) |
-| `/stikerteks <teks>` | Stiker Brat dari teks |
-| `/rvo` | Buka view-once (reply) |
-| `/pap` | PAP random |
-| `/grouplink` | Ambil link grup |
-| `/iqc <nama>` | Cek IQ random |
-| `/schedule-task` | Jadwalkan tugas |
-| `/daily-task` | Tugas harian |
+- TikTok
+- YouTube
+- Instagram
+- Facebook
+- Platform lainnya
 
-### 🛡️ Admin Grup
-
-| Command | Deskripsi |
-|---------|-----------|
-| `/group kick` | Kick member |
-| `/group add` | Tambah member |
-| `/group mute` | Mute member |
-| `/group delete` | Hapus pesan (reply) |
-| `/group pin` | Pin pesan (reply) |
-| `/group close/open` | Tutup/buka grup |
-| `/group description` | Ubah deskripsi |
-| `/permission` | Level moderasi |
-| `/trigger` | Atur trigger |
-| `/idle` | Idle trigger |
-| `/mode` | Mode respons |
-| `/announcement` | Broadcast setting |
-| `/prompt` | Atur system prompt |
-| `/setnamegroup` | Ganti nama grup |
-| `/setpp` | Ganti PP grup |
-| `/add-sticker` | Tambah stiker |
-| `/remove-sticker` | Hapus stiker |
-| `/setting` | Menu pengaturan |
-| `/compat` | Mode pesan interaktif |
-
-### 👑 Owner Only
-
-| Command | Deskripsi |
-|---------|-----------|
-| `/boton` | Aktifkan bot |
-| `/botoff` | Matikan bot |
-| `/broadcast` | Broadcast semua grup |
-| `/bot-conf` | Config global |
-| `/join` | Join grup |
-| `/generate` | Generate kode aktivasi |
-| `/revoke` | Cabut kode |
-| `/monitor` | Dashboard bot |
-| `/model` | Atur model |
-| `/modelcfg` | Config model |
-| `/memory` | Lihat memory |
-| `/subagent` | Sub-agent |
-| `/kirim-media` | PAP & media |
-| `/papmmk` | PAP memek |
-| `/paptt` | PAP susu |
-| `/papbugil` | PAP bugil |
-| `/help` | List command |
-| `/info` | Info bot |
-| `/dump` | Ekspor LLM |
-| `/debug` | Debug |
-| `/catch` | Debug payload |
-| `/lid` | Liat LID |
-| `/owner-contact` | Kontak owner |
-| `/reset` | Reset chat |
-| `/update` | Update bot |
+Cukup kirim link video dan bot akan memprosesnya.
 
 ---
 
-## 🚀 Cara Install
+## 🎨 Sticker System
 
-### Requirements
-- **Node.js 18+** → [Download](https://nodejs.org/)
-- **Python 3.10+** → [Download](https://python.org/)
-- **Git** → [Download](https://git-scm.com/)
+Fitur sticker:
 
-### Step 1: Clone repo
+- Sticker dari gambar
+- Sticker dari video
+- Sticker Brat dari teks
+- Katalog sticker custom
+- Tambah sticker
+- Hapus sticker
+
+Contoh:
+
+```text
+/sticker
+/stikerteks halo bela
+/add-sticker nama
+/remove-sticker nama
+````
+
+---
+
+## 🔓 RVO — View Once
+
+Bela memiliki fitur RVO untuk membuka pesan view-once yang direply.
+
+Support:
+
+* 🖼️ Gambar
+* 🎥 Video
+* 🎵 Audio
+* 👥 Grup
+* 💬 Private Chat
+
+Command:
+
+```text
+/rvo
+```
+
+---
+
+## 🛡️ Group Management
+
+Bela dapat membantu administrasi grup:
+
+* Kick member
+* Add member
+* Mute member
+* Delete pesan
+* Pin pesan
+* Ganti nama grup
+* Ganti foto grup
+* Ganti deskripsi grup
+* Ambil link invite
+* Tutup grup
+* Buka grup
+* Permission level
+
+Format nomor yang didukung:
+
+```text
+08xxxxxxxxxx
+62xxxxxxxxxx
++62xxxxxxxxxx
+```
+
+---
+
+## 🧠 Memory System
+
+Bela memiliki sistem memory untuk menyimpan informasi pengguna.
+
+Fitur:
+
+* Memory user
+* Auto-save informasi penting
+* Memory per chat
+* Global memory
+* Melanjutkan percakapan tanpa kehilangan konteks
+* Melihat memory
+* Menghapus memory
+* Global memory khusus owner
+
+Command:
+
+```text
+/memory
+/memory add <fakta>
+/memory delete <index>
+/memory global add
+```
+
+---
+
+## ⏰ Scheduling
+
+Bela mendukung penjadwalan tugas.
+
+Contoh:
+
+```text
+/schedule-task 30M rapat
+```
+
+Daily task:
+
+```text
+/daily-task add 07:00 bangun
+```
+
+Hapus:
+
+```text
+/daily-task delete
+```
+
+Idle trigger:
+
+```text
+/idle 5-10
+```
+
+---
+
+## 🖼️ PAP & Media
+
+Fitur media:
+
+```text
+/pap
+/media
+/kirim-media
+```
+
+Fitur owner:
+
+```text
+/papmmk
+/paptt
+/papbugil
+```
+
+---
+
+# 👑 Owner Features
+
+Owner mempunyai akses ke berbagai fitur khusus:
+
+```text
+/broadcast
+/bot-conf
+/generate
+/revoke
+/join
+/owner-contact
+/setpp
+/setnamegroup
+/model
+/modelcfg
+/subagent
+/update
+/boton
+/botoff
+/monitor
+```
+
+---
+
+# ⚙️ Mode Respons
+
+Bela memiliki tiga mode respons:
+
+| Mode     | Deskripsi                              |
+| -------- | -------------------------------------- |
+| `auto`   | Bot merespons semua pesan              |
+| `prefix` | Bot merespons ketika disebut/ditrigger |
+| `hybrid` | Prefix terlebih dahulu, kemudian auto  |
+
+Contoh:
+
+```text
+/mode auto
+```
+
+```text
+/mode prefix
+```
+
+```text
+/mode hybrid
+```
+
+---
+
+# 🔍 Info & Statistik
+
+Command informasi:
+
+```text
+/iqc <nama>
+/dashboard
+/info
+/menubela
+/help
+/dump
+```
+
+---
+
+# 📋 Semua Command
+
+## 🟢 Public
+
+| Command                           | Deskripsi                      |
+| --------------------------------- | ------------------------------ |
+| `/menubela`                       | Menu fitur utama               |
+| `/download <link>`                | Download video TikTok/YT/IG/FB |
+| `/sticker`                        | Membuat sticker dari gambar    |
+| `/stikerteks <teks>`              | Membuat sticker Brat           |
+| `/rvo`                            | Membuka view-once              |
+| `/pap`                            | PAP random                     |
+| `/grouplink`                      | Mengambil link grup            |
+| `/iqc <nama>`                     | Cek IQ random                  |
+| `/schedule-task <durasi> <tugas>` | Menjadwalkan tugas             |
+| `/daily-task`                     | Mengelola tugas harian         |
+
+---
+
+## 🛡️ Admin Grup
+
+| Command                        | Deskripsi             |
+| ------------------------------ | --------------------- |
+| `/group kick @nama`            | Kick member           |
+| `/group add @nomor`            | Tambah member         |
+| `/group mute @nama <menit>`    | Mute member           |
+| `/group delete`                | Hapus pesan           |
+| `/group pin <1\|7\|30>`        | Pin pesan             |
+| `/group close`                 | Menutup grup          |
+| `/group open`                  | Membuka grup          |
+| `/group description <teks>`    | Mengubah deskripsi    |
+| `/permission <0-3>`            | Mengatur permission   |
+| `/trigger <jenis> on/off`      | Mengatur trigger      |
+| `/idle <n>`                    | Mengatur idle trigger |
+| `/mode <auto\|prefix\|hybrid>` | Mode respons          |
+| `/announcement <on\|off>`      | Announcement          |
+| `/prompt <teks>`               | System prompt         |
+| `/setnamegroup <nama>`         | Mengubah nama grup    |
+| `/setpp`                       | Mengubah foto grup    |
+| `/add-sticker <nama>`          | Menambah sticker      |
+| `/remove-sticker <nama>`       | Menghapus sticker     |
+| `/setting`                     | Pengaturan            |
+| `/compat <mode>`               | Mode pesan interaktif |
+
+---
+
+# 👑 Owner Only
+
+| Command                  | Deskripsi                 |
+| ------------------------ | ------------------------- |
+| `/boton`                 | Mengaktifkan bot          |
+| `/botoff`                | Menonaktifkan bot         |
+| `/broadcast <teks>`      | Broadcast semua grup      |
+| `/bot-conf`              | Config global             |
+| `/join <link>`           | Join grup                 |
+| `/generate`              | Generate kode aktivasi    |
+| `/revoke <id>`           | Revoke kode               |
+| `/monitor`               | Dashboard bot             |
+| `/model`                 | Mengatur model LLM        |
+| `/modelcfg`              | Config model              |
+| `/memory`                | Melihat memory            |
+| `/memory add <fakta>`    | Menambahkan memory        |
+| `/memory delete <index>` | Menghapus memory          |
+| `/memory global add`     | Menambahkan global memory |
+| `/subagent on/off`       | Sub-agent                 |
+| `/kirim-media`           | PAP & media               |
+| `/papmmk`                | PAP khusus owner          |
+| `/paptt`                 | PAP khusus owner          |
+| `/papbugil`              | PAP khusus owner          |
+| `/help`                  | Semua command             |
+| `/info`                  | Informasi bot             |
+| `/dump`                  | Dump konteks LLM          |
+| `/debug`                 | Debug bot                 |
+| `/catch`                 | Debug payload             |
+| `/lid <nomor>`           | Melihat LID               |
+| `/owner-contact`         | Kontak owner              |
+| `/reset`                 | Reset history             |
+| `/update`                | Update bot                |
+
+---
+
+# 🚀 Cara Install
+
+## Requirements
+
+Pastikan sudah terinstall:
+
+* Node.js 18+
+* Python 3.10+
+* Git
+* 9Router — optional tetapi direkomendasikan
+
+---
+
+## 1. Clone Repository
+
 ```bash
 git clone https://github.com/jhon338-jc/BotBelaV2.git
 cd BotBelaV2
 ```
 
-### Step 2: Install Node.js dependencies
+---
+
+## 2. Install Node.js Dependencies
+
 ```bash
 npm install
 ```
 
-### Step 3: Install Python dependencies
+---
+
+## 3. Install Python Dependencies
+
 ```bash
 cd python
 pip install -r requirements.txt
 cd ..
 ```
 
-### Step 4: Setup .env
+---
+
+## 4. Setup `.env`
+
+### Windows
+
 ```bash
 copy .env.example .env
 notepad .env
 ```
 
----
-
-## 🔧 Cara Setup Bot
-
-### 1. Edit file `.env`
+### Linux / Termux
 
 ```bash
-notepad .env
+cp .env.example .env
+nano .env
 ```
 
-### 2. Isi konfigurasi wajib:
+Isi konfigurasi minimal:
 
-```
-BOT_OWNER_JIDS=628xxx,628xxx
-WA_PAIRING_NUMBER=628xxx
-```
-
-**Contoh:**
-```
-BOT_OWNER_JIDS=6285134895788,6285602288269
-WA_PAIRING_NUMBER=6285602288269
+```env
+BOT_OWNER_JIDS=628xxxxxxxxxx
+WA_PAIRING_NUMBER=628xxxxxxxxxx
 ```
 
-### 3. Simpan file `.env`
+---
 
-### 4. Jalankan Node.js (Terminal 1)
+# 🔀 9Router Setup
+
+Install 9Router:
+
+```bash
+npx 9router
+```
+
+Kemudian buka:
+
+```text
+http://localhost:20128
+```
+
+Tambahkan API key provider AI yang ingin digunakan.
+
+Buat combo:
+
+```text
+BELA_UTAMA
+```
+
+---
+
+## Provider yang Didukung
+
+Bela dapat menggunakan beberapa provider melalui 9Router:
+
+* Cloudflare
+* Gemini
+* Groq
+* Mistral
+* OpenRouter
+* OpenCode Free
+
+---
+
+## Combo `BELA_UTAMA`
+
+Contoh konfigurasi:
+
+```text
+1. gemini/gemini-3.6-flash
+2. gemini/gemini-3-flash-preview
+3. cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+4. cf/@cf/meta/llama-3.1-70b-instruct-fp8-fast
+5. cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+6. mistral/mistral-large-latest
+7. oc/big-pickle
+```
+
+Provider akan digunakan secara fallback apabila provider sebelumnya mengalami error.
+
+---
+
+# ▶️ Menjalankan Bot
+
+## Terminal 1 — Node.js
+
 ```bash
 npm start
 ```
 
-### 5. Jalankan Python bridge (Terminal 2)
+---
+
+## Terminal 2 — Python Bridge
+
 ```bash
 cd python
 python -m bridge.main
@@ -229,212 +503,304 @@ python -m bridge.main
 
 ---
 
-## 🔀 Cara Setup 9Router
+# 📱 Pairing WhatsApp
 
-### 1. Jalankan 9Router
-```bash
-npx 9router
+1. Buka WhatsApp di HP.
+2. Masuk ke **Linked Devices**.
+3. Pilih **Link a Device**.
+4. Pilih **Link with phone number**.
+5. Masukkan nomor yang terdapat pada:
+
+```env
+WA_PAIRING_NUMBER
 ```
 
-### 2. Buka dashboard
-```
-http://localhost:20128
-```
+6. Masukkan kode pairing yang diberikan terminal.
 
-### 3. Tambah API key provider
-- Masuk ke **Providers**
-- Klik provider yang lo punya (Gemini, Cloudflare, Groq, dll)
-- Tambah API key
-
-### 4. Bikin combo `BELA_UTAMA`
-- Masuk ke **Combo & Vision Adapter**
-- Klik **New Combo**
-- Nama: `BELA_UTAMA`
-- Tambah model yang aktif
-
-### 5. Model yang direkomendasikan:
-
-1. `gemini/gemini-3.6-flash` ← paling stabil
-2. `gemini/gemini-3-flash-preview`
-3. `cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast`
-4. `cf/@cf/meta/llama-3.1-70b-instruct-fp8-fast`
-5. `cf/@cf/mistralai/mistral-small-3.1-24b-instruct`
-6. `mistral/mistral-large-latest`
-7. `oc/big-pickle`
+Jika berhasil, bot siap digunakan.
 
 ---
 
-## 📱 Cara Pairing WhatsApp
+# ⚙️ Konfigurasi
 
-### 1. Buka WhatsApp di HP
+| Variable               | Default                     | Deskripsi                         |
+| ---------------------- | --------------------------- | --------------------------------- |
+| `BOT_OWNER_JIDS`       | -                           | Nomor owner, pisahkan dengan koma |
+| `WA_PAIRING_NUMBER`    | -                           | Nomor WhatsApp bot                |
+| `ASSISTANT_NAME`       | `bela,bell,bella,belll`     | Nama panggilan bot                |
+| `LLM1_MODEL`           | `BELA_UTAMA`                | Model LLM utama                   |
+| `LLM2_MODEL`           | `BELA_UTAMA`                | Model LLM kedua                   |
+| `LLM2_ENDPOINT`        | `http://localhost:20128/v1` | Endpoint LLM2                     |
+| `LLM2_TIMEOUT`         | `120`                       | Timeout LLM dalam detik           |
+| `HISTORY_LIMIT`        | `50`                        | Jumlah history                    |
+| `PRIVATE_CHAT_ENABLED` | `false`                     | Mengaktifkan respon DM            |
 
-### 2. Masuk ke **Linked Devices** → **Link a Device**
+Contoh:
 
-### 3. Pilih **Link with phone number**
+```env
+BOT_OWNER_JIDS=628xxxxxxxxxx
+WA_PAIRING_NUMBER=628xxxxxxxxxx
 
-### 4. Masukin nomor yang di-set di `WA_PAIRING_NUMBER`
+ASSISTANT_NAME=bela,bell,bella,belll
 
-### 5. Masukin kode pairing dari terminal
+LLM1_MODEL=BELA_UTAMA
+LLM2_MODEL=BELA_UTAMA
 
-### 6. Done! Bot udah konek.
+LLM2_ENDPOINT=http://localhost:20128/v1
+LLM2_TIMEOUT=120
 
----
-
-## 👑 Cara Ganti Owner
-
-### 1. Edit `.env`
-```bash
-notepad .env
-```
-
-### 2. Cari `BOT_OWNER_JIDS`
-
-### 3. Ganti nomor owner:
-```
-BOT_OWNER_JIDS=628_nomor_owner_1,628_nomor_owner_2
-```
-
-### 4. Simpan & restart Node.js
-
----
-
-## 🤖 Cara Ganti Model AI
-
-### Dari WhatsApp grup:
-```
-/model BELA_UTAMA
-```
-
-### Atau dari 9Router:
-1. Buka `http://localhost:20128`
-2. **Combo & Vision Adapter**
-3. Edit `BELA_UTAMA`
-4. Tambah/hapus model
-
----
-
-## 🔌 Cara Bot On/Off Per Chat
-
-### Aktifkan bot di grup:
-```
-/boton
-```
-
-### Matikan bot di grup:
-```
-/botoff
-```
-
-**Saat `/boton`:**
-- Bot aktif
-- Model otomatis ke `BELA_UTAMA`
-- Semua fitur jalan
-
-**Saat `/botoff`:**
-- Bot mati
-- Fitur slash mati
-- Tapi AI masih bisa chat natural
-
----
-
-## ⚙️ Konfigurasi
-
-| Variable | Default | Deskripsi |
-|----------|---------|-----------|
-| `BOT_OWNER_JIDS` | - | Nomor owner |
-| `WA_PAIRING_NUMBER` | - | Nomor bot |
-| `ASSISTANT_NAME` | `bela,bell,bella,belll` | Nama panggilan |
-| `LLM1_MODEL` | `BELA_UTAMA` | Model LLM1 |
-| `LLM2_MODEL` | `BELA_UTAMA` | Model LLM2 |
-| `LLM2_ENDPOINT` | `http://localhost:20128/v1` | Endpoint LLM2 |
-| `LLM2_TIMEOUT` | `120` | Timeout LLM2 |
-| `HISTORY_LIMIT` | `50` | Pesan diingat |
-| `PRIVATE_CHAT_ENABLED` | `false` | Bot respon DM |
-
----
-
-## 🎭 Mode Respons
-
-```bash
-/mode auto      # Bot respond semua pesan
-/mode prefix    # Bot respond saat disebut
-/mode hybrid    # Prefix dulu, auto kalau nggak ada
+HISTORY_LIMIT=50
+PRIVATE_CHAT_ENABLED=false
 ```
 
 ---
 
-## 🔐 Permission Level
+# 🎭 Mode Respons
+
+### Auto
+
+```text
+/mode auto
+```
+
+Bot merespons semua pesan.
+
+### Prefix
+
+```text
+/mode prefix
+```
+
+Bot hanya merespons ketika dipanggil atau ditrigger.
+
+### Hybrid
+
+```text
+/mode hybrid
+```
+
+Bot menggunakan prefix terlebih dahulu dan dapat menggunakan auto response sesuai konfigurasi.
+
+---
+
+# 🔐 Permission Level
+
+Permission menentukan kemampuan bot dalam melakukan moderasi grup.
 
 | Level | Delete | Mute | Kick |
-|-------|--------|------|------|
-| 0 | ❌ | ❌ | ❌ |
-| 1 | ✅ | ❌ | ❌ |
-| 2 | ✅ | ✅ | ❌ |
-| 3 | ✅ | ✅ | ✅ |
+| ----: | :----: | :--: | :--: |
+|     0 |    ❌   |   ❌  |   ❌  |
+|     1 |    ✅   |   ❌  |   ❌  |
+|     2 |    ✅   |   ✅  |   ❌  |
+|     3 |    ✅   |   ✅  |   ✅  |
 
-```bash
+Contoh:
+
+```text
 /permission 3
 ```
 
 ---
 
-## ❓ FAQ
+# ❓ FAQ
 
-**Bot nggak bales di grup?**
-- Cek mode (`/mode auto`)
-- Cek bot enabled (`/boton`)
+## Bot tidak membalas di grup
 
-**LLM timeout?**
-- Naikin `LLM2_TIMEOUT=180`
-- Hapus model mati dari combo
+Cek:
 
-**Bot nggak bisa kick?**
-- Cek permission (`/permission 3`)
-- Cek bot admin di grup
+```text
+/mode auto
+```
 
-**PAP nggak bisa diakses?**
-- Cek user-nya owner atau bukan
+Kemudian pastikan bot aktif:
+
+```text
+/boton
+```
+
+Dan periksa permission grup.
 
 ---
 
-## 📝 License
+## LLM Timeout
 
+Coba tingkatkan:
+
+```env
+LLM2_TIMEOUT=180
+```
+
+Kemudian pastikan 9Router masih berjalan.
+
+Periksa juga model yang digunakan di combo.
+
+---
+
+## Bot tidak bisa kick member
+
+Pastikan:
+
+```text
+/permission 3
+```
+
+dan bot sudah menjadi admin grup.
+
+---
+
+## Bot tidak bisa download video
+
+Periksa:
+
+* Link masih valid
+* Koneksi internet
+* Platform masih didukung
+* Dependency downloader sudah terinstall
+
+---
+
+# 🗂️ Struktur Project
+
+Struktur utama project:
+
+```text
+BotBelaV2/
+│
+├── plugins/
+│   ├── owner/
+│   ├── group/
+│   └── ...
+│
+├── python/
+│   ├── bridge/
+│   └── requirements.txt
+│
+├── .env
+├── .env.example
+├── package.json
+├── README.md
+└── ...
+```
+
+---
+
+# 🔒 Security
+
+**Jangan pernah upload credential ke repository publik.**
+
+Jangan membagikan:
+
+```text
+.env
+API KEY
+ACCESS TOKEN
+WHATSAPP SESSION
+DATABASE CREDENTIAL
+PASSWORD
+PRIVATE KEY
+DATA PRIBADI
+```
+
+Pastikan `.env` masuk ke `.gitignore`.
+
+Contoh:
+
+```gitignore
+.env
+.env.*
+!.env.example
+
+node_modules/
+__pycache__/
+*.log
+sessions/
+auth/
+```
+
+---
+
+# 📝 License
+
+```text
 ISC © 2026 jhon338-jc
-
----
-
-## 👥 Kontributor
-
-| Nama | Peran |
-|------|-------|
-| [@Chomosuke9](https://github.com/Chomosuke9) | **Original Creator** |
-| [@jhon338-jc](https://github.com/jhon338-jc) | **Maintainer & Developer** |
-
-Project ini awalnya dibuat oleh Chomosuke9, dikembangkan & di-update penuh oleh JHON338 dengan penambahan fitur:
-- RVO (View-Once)
-- Group management lengkap
-- PAP & Media system
-- Bot on/off per chat
-- 9Router multi-provider
-- Owner detection fromMe
-- Anti tool_call injection
-- Model protection
-- Dan banyak lagi
-
----
-
-**BELA V2 — WhatsApp AI Bot Indonesia by JHON338 🤖💗**
 ```
 
 ---
 
-**Buka `README.md`, Ctrl+A, Delete, paste full code, Ctrl+S.**
+# 👥 Kontributor
 
-**Push:**
-```bash
-git add README.md
-git commit -m "Update README: full setup guide Bela V2"
-git push origin main
+| Nama                                         | Peran                                                                |
+| -------------------------------------------- | -------------------------------------------------------------------- |
+| [@Chomosuke9](https://github.com/Chomosuke9) | **Original Creator** — pembuat awal Bot Bela V2                      |
+| [@jhon338-jc](https://github.com/jhon338-jc) | **Maintainer & Developer** — update, bug fix, dan pengembangan fitur |
+
+---
+
+# 📜 Credit & History
+
+Project ini awalnya dibuat oleh:
+
+**Chomosuke9 — Bagus Teguh Widoyoko**
+
+Kemudian project di-fork dan dikembangkan lebih lanjut oleh:
+
+**jhon338-jc — JHON338**
+
+Pengembangan yang ditambahkan antara lain:
+
+* RVO / View-Once
+* Group management
+* Kick member
+* Add member
+* Pin message
+* Set PP
+* Set nama grup
+* PAP & Media system
+* Bot on/off per chat
+* 9Router multi-provider
+* Owner detection
+* Anti tool-call injection
+* Model protection
+* Memory system
+* Scheduling
+* Dan berbagai pengembangan lainnya
+
+---
+
+# ⚠️ Disclaimer
+
+Project ini dibuat untuk:
+
+* Pembelajaran
+* Eksperimen
+* Pengembangan bot WhatsApp
+* Pengembangan AI assistant
+
+Gunakan bot secara bertanggung jawab.
+
+Pastikan penggunaan fitur bot, downloader, AI provider, media, dan group management sesuai dengan aturan platform dan layanan yang digunakan.
+
+---
+
+# ⭐ Support Project
+
+Jika project ini bermanfaat, jangan lupa memberikan ⭐ pada repository GitHub:
+
+```text
+https://github.com/jhon338-jc/BotBelaV2
 ```
 
-🔥
+---
+
+<div align="center">
+
+# 🤖 BELA V2
+
+### WhatsApp AI Bot Indonesia
+
+**Developed & Maintained by JHON338**
+
+💗 AI • Memory • Sticker • Downloader • Group Management • 9Router
+
+</div>
+```
