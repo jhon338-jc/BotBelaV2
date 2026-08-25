@@ -21,7 +21,6 @@ Bela nggak cuma bot biasa. Dia punya emosi, bisa baper, manja, ngeselin, dan ngo
 - [Mode Respons](#-mode-respons)
 - [Permission Level](#-permission-level)
 - [FAQ](#-faq)
-- [Kontributor](#-kontributor)
 
 ---
 
@@ -208,3 +207,25 @@ Bela nggak cuma bot biasa. Dia punya emosi, bisa baper, manja, ngeselin, dan ngo
 ```bash
 git clone https://github.com/jhon338-jc/BotBelaV2.git
 cd BotBelaV2
+
+### 📝 License
+
+ISC © 2026 jhon338-jc
+
+---
+
+### 👥 Kontributor
+
+| Nama | Peran |
+|------|-------|
+| [@Chomosuke9](https://github.com/Chomosuke9) | **Original Creator** — pembuat awal Bot Bela V2 |
+| [@jhon338-jc](https://github.com/jhon338-jc) | **Maintainer & Developer** — full update, bug fix, dan pengembangan fitur baru |
+
+**Credit & History:**
+Project ini awalnya dibuat oleh [Chomosuke9](https://github.com/Chomosuke9) (Bagus Teguh Widoyoko). Kemudian di-fork, di-update penuh, dan dikembangkan lebih lanjut oleh [jhon338-jc](https://github.com/jhon338-jc) (JHON338) dengan penambahan fitur:
+- RVO (View-Once)
+- Group management lengkap (kick, add, pin, setpp, setname)
+- PAP & Media system
+- Bot on/off per chat
+- 9Router multi-provider support
+- Dan banyak lagi
