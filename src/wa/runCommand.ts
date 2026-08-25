@@ -1,0 +1,308 @@
+/**
+ * runCommand.js — Gateway-side handler for Python's `run_command` action.
+ *
+ * Lets LLM2 trigger a slash command via the optional `command` parameter on
+ * `reply_message` *without* posting the command text to the WhatsApp chat.
+ *
+ * Flow:
+ *   1. Python emits `{type: "run_command", payload: {chatId, command, contextMsgId?}}`.
+ *   2. This module parses `command` with `parseSlashCommand`, builds the same
+ *      context object that `connection.js` would build for a real human-typed
+ *      slash command (chatType, sender flags, group metadata, msg with quoted
+ *      stanza when `contextMsgId` is provided), and invokes
+ *      `dispatchCommand` (the command registry) directly.
+ *   3. The result is reported back via `action_ack`, including the canonical
+ *      command name so Python can append a clean log entry to LLM history.
+ *
+ * The synthesised `msg` is treated as if the bot itself typed the command
+ * (`fromMe: true`, sender = bot's own JID), which mirrors how a genuine
+ * self-trigger would have looked under the old two-reply protocol.
+ */
+import logger from '../logger.js';
+import { parseSlashCommand } from './commands/index.js';
+import { dispatchCommand } from './command/CommandRegistry.js';
+import { repairMissingMentionPrefixes } from './outbound.js';
+import { roleFlagsForJid } from './domain/participants.js';
+import {
+  getCachedGroupMetadata,
+  defaultGroupContext,
+  getGroupContext,
+  currentBotAliases,
+} from './domain/groupContext.js';
+import {
+  normalizeJid,
+  resolveQuotedMessage,
+  getIndexedMessageByContextId,
+  normalizeContextMsgId,
+} from './domain/identifiers.js';
+import type { GroupContextValue, ParticipantRoleFlags } from './domain/caches.js';
+import type { RunCommandPayload } from '../protocol/types.js';
+import type { AccountContext } from '../account/accountContext.js';
+
+const MAX_CAPTURED_COMMAND_OUTPUTS = 20;
+const MAX_CAPTURED_COMMAND_OUTPUT_CHARS = 16_000;
+
+function commandOutputText(content: unknown): string | null {
+  if (!content || typeof content !== 'object') return null;
+  const body = content as { text?: unknown; caption?: unknown };
+  const value = typeof body.text === 'string'
+    ? body.text
+    : typeof body.caption === 'string'
+      ? body.caption
+      : null;
+  const trimmed = value?.trim() || '';
+  return trimmed || null;
+}
+
+/**
+ * Wrap the command-facing socket so text produced synchronously by a command
+ * can be returned to Python in the run_command ACK. Baileys does not
+ * consistently echo gateway-originated sends through messages.upsert, so the
+ * ACK is the reliable place to preserve command output in LLM history.
+ */
+function captureCommandOutputs(
+  sock: NonNullable<AccountContext['sock']>,
+  chatId: string,
+  outputs: string[],
+): NonNullable<AccountContext['sock']> {
+  let capturedChars = 0;
+  return new Proxy(sock, {
+    get(target, property, receiver) {
+      if (property === 'sendMessage') {
+        return async (jid: string, content: unknown, ...args: unknown[]) => {
+          const text = jid === chatId ? commandOutputText(content) : null;
+          if (
+            text
+            && outputs.length < MAX_CAPTURED_COMMAND_OUTPUTS
+            && capturedChars < MAX_CAPTURED_COMMAND_OUTPUT_CHARS
+          ) {
+            const remaining = MAX_CAPTURED_COMMAND_OUTPUT_CHARS - capturedChars;
+            const captured = text.slice(0, remaining);
+            if (captured) {
+              outputs.push(captured);
+              capturedChars += captured.length;
+            }
+          }
+          return Reflect.apply(target.sendMessage, target, [jid, content, ...args] as never);
+        };
+      }
+      const value = Reflect.get(target, property, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+}
+
+/**
+ * Build a fake `msg` object that command handlers can treat like any other
+ * incoming WA message. When `contextMsgId` resolves to a cached message we
+ * embed it as a quoted reply so handlers like `/sticker` and `/catch` can
+ * pull the media via `extendedTextMessage.contextInfo.{stanzaId,quotedMessage}`.
+ */
+function buildFakeMessage({
+  ctx,
+  chatId,
+  commandText,
+  senderId,
+  fromMe,
+  contextMsgId,
+}: {
+  ctx: AccountContext;
+  chatId: string;
+  commandText: string;
+  senderId: string;
+  fromMe: boolean;
+  contextMsgId: string | null;
+}) {
+  let messageBody: Record<string, unknown> | undefined;
+  let stanzaId: string | null = null;
+  if (contextMsgId) {
+    const quoted = resolveQuotedMessage(ctx, chatId, contextMsgId);
+    const indexed = getIndexedMessageByContextId(ctx, chatId, contextMsgId);
+    stanzaId = indexed?.id || null;
+    if (quoted && stanzaId) {
+      messageBody = {
+        extendedTextMessage: {
+          text: commandText,
+          contextInfo: {
+            stanzaId,
+            participant: indexed?.participant || indexed?.senderId || undefined,
+            quotedMessage: quoted.message || { conversation: '' },
+          },
+        },
+      };
+    }
+  }
+  if (!messageBody) {
+    messageBody = { conversation: commandText };
+  }
+
+  // When we have a resolved stanzaId from the quoted context, reuse it as the
+  // fake message's id. This is what makes `replyTo: msg.key.id` resolvable in
+  // downstream handlers like /sticker — the synthetic `runcmd_xxx` id is
+  // never registered in the message cache, so `sendOutgoing` would otherwise
+  // throw "reply target not found". Using the real stanzaId means the bot
+  // ends up quoting the original media (which is the natural target anyway).
+  // When there's no quoted context, fall back to a synthetic id; handlers
+  // that don't need replyTo (e.g. /help, /dashboard) still work.
+  const fakeKey = {
+    id: stanzaId || `runcmd_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    remoteJid: chatId,
+    fromMe,
+    participant: senderId || undefined,
+  };
+
+  return {
+    key: fakeKey,
+    message: messageBody,
+    pushName: 'Bot',
+    quotedStanzaId: stanzaId,
+  };
+}
+
+/**
+ * Resolve the bot's own JID for impersonation. Falls back to a generic
+ * `bot@s.whatsapp.net` placeholder if the socket isn't fully ready — command
+ * handlers only use this for permission checks and `senderIsOwner`, both of
+ * which are explicitly forced to true below since the bot is privileged.
+ */
+function resolveBotSenderId(ctx: AccountContext): string {
+  const sock = ctx.sock;
+  // Baileys' Contact type exposes `id`; some builds also carry a legacy `jid`.
+  // Probe both through a loose view to preserve the original untyped fallback.
+  const rawId = sock?.user?.id || (sock?.user as { jid?: string })?.jid || null;
+  return normalizeJid(rawId) || rawId || 'bot@s.whatsapp.net';
+}
+
+async function buildGroupSnapshot(ctx: AccountContext, chatId: string): Promise<GroupContextValue | null> {
+  if (!chatId.endsWith('@g.us')) return null;
+  // Prefer the cached snapshot to avoid blocking on `groupMetadata`. Fall
+  // back to a fresh lookup when the cache is cold.
+  const cached = getCachedGroupMetadata(ctx, chatId);
+  if (cached) return cached;
+  try {
+    return await getGroupContext(ctx, chatId);
+  } catch (err) {
+    logger.warn({ err, chatId }, 'run_command: group lookup failed, using default context');
+    return defaultGroupContext(chatId);
+  }
+}
+
+/**
+ * Dispatch a `run_command` payload arriving from the Python bridge.
+ *
+ * @returns Result for the `action_ack`.
+ */
+async function dispatchRunCommand(
+  ctx: AccountContext,
+  payload: Partial<RunCommandPayload> | null | undefined,
+): Promise<{ ok: boolean; command: string | null; detail: string; outputs: string[] }> {
+  const chatId = payload?.chatId;
+  const rawCommand = payload?.command;
+  const contextMsgId = normalizeContextMsgId(payload?.contextMsgId);
+
+  if (!chatId || typeof chatId !== 'string') {
+    return { ok: false, command: null, detail: 'missing chatId', outputs: [] };
+  }
+  if (!rawCommand || typeof rawCommand !== 'string') {
+    return { ok: false, command: null, detail: 'missing command text', outputs: [] };
+  }
+
+  // Be lenient about the leading slash: the LLM-driven `run_command` path may
+  // emit the command with or without a leading '/'. Normalize by prepending it
+  // when missing so `parseSlashCommand` resolves it either way. This is scoped
+  // to the programmatic run_command action only — human-typed messages keep
+  // requiring an explicit '/' via the inbound parser.
+  const trimmedCommand = rawCommand.trim();
+  const normalizedCommandWithSlash = trimmedCommand.startsWith('/')
+    ? trimmedCommand
+    : `/${trimmedCommand}`;
+  // Persisting commands (/schedule-task, /prompt, /memory) must receive the
+  // same canonical mention form as ordinary outbound replies. Repair a
+  // provider-produced `Name (senderRef)` before parsing/dispatch so handlers
+  // store `@Name (senderRef)` and can capture durable mention bindings.
+  const normalizedCommand = repairMissingMentionPrefixes(
+    ctx,
+    chatId,
+    normalizedCommandWithSlash,
+  );
+
+  const slashCommand = parseSlashCommand(normalizedCommand);
+  if (!slashCommand) {
+    return { ok: false, command: null, detail: `unrecognised command: ${rawCommand}`, outputs: [] };
+  }
+
+  const isGroup = chatId.endsWith('@g.us');
+  const chatType = isGroup ? 'group' : 'private';
+  const group = await buildGroupSnapshot(ctx, chatId);
+  const botSenderId = resolveBotSenderId(ctx);
+  const botAliases = currentBotAliases(ctx);
+
+  // Compute admin/super-admin flags from the bot's own role in the group.
+  // The bot acts as the impersonated sender, so `senderIsAdmin` mirrors
+  // `botIsAdmin` and friends — this is what unlocks group-only commands
+  // like `/announcement`.
+  let senderIsAdmin = false;
+  let senderRole: ParticipantRoleFlags = { isAdmin: false, isSuperAdmin: false };
+  if (isGroup && group?.participantRoles) {
+    for (const alias of botAliases.length ? botAliases : [botSenderId]) {
+      const flags = roleFlagsForJid(group.participantRoles, alias);
+      if (flags.isAdmin || flags.isSuperAdmin) {
+        senderIsAdmin = true;
+        senderRole = flags;
+        break;
+      }
+    }
+  }
+
+  const fakeMsg = buildFakeMessage({
+    ctx,
+    chatId,
+    commandText: normalizedCommand,
+    senderId: botSenderId,
+    fromMe: true,
+    contextMsgId,
+  });
+
+  const outputs: string[] = [];
+  const commandSock = captureCommandOutputs(ctx.sock!, chatId, outputs);
+
+  const context = {
+    slashCommand,
+    chatId,
+    chatType,
+    senderId: botSenderId,
+    senderIsAdmin,
+    // The bot is privileged by definition for self-triggered commands.
+    // Without this owner-only commands like `/owner-contact`, `/subagent`,
+    // and `/idle` would refuse to run.
+    senderIsOwner: true,
+    senderRole,
+    senderDisplay: 'Bot',
+    botIsAdmin: Boolean(group?.botIsAdmin),
+    botIsSuperAdmin: Boolean(group?.botIsSuperAdmin),
+    contextMsgId: fakeMsg.quotedStanzaId,
+    fromMe: true,
+    text: normalizedCommand,
+    group,
+    msg: fakeMsg,
+    account: ctx,
+    sock: commandSock,
+    repos: ctx.repos,
+  };
+
+  logger.info(
+    { chatId, command: slashCommand.command, args: slashCommand.args, contextMsgId },
+    'run_command: dispatching self-triggered slash command',
+  );
+
+  await dispatchCommand(fakeMsg, context);
+
+  return {
+    ok: true,
+    command: slashCommand.command,
+    detail: 'executed',
+    outputs,
+  };
+}
+
+export { dispatchRunCommand };

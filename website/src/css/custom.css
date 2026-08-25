@@ -1,0 +1,339 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --ifm-color-primary: #0c8a4d;
+  --ifm-color-primary-dark: #0a7a44;
+  --ifm-color-primary-darker: #097040;
+  --ifm-color-primary-darkest: #075E54;
+  --ifm-color-primary-light: #21cc5d;
+  --ifm-color-primary-lighter: #27dc67;
+  --ifm-color-primary-lightest: #54e884;
+  --ifm-code-font-size: 95%;
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --ifm-heading-font-weight: 700;
+  --ifm-line-height-base: 1.65;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --wazzap-gradient: linear-gradient(135deg, #075E54 0%, #128C7E 45%, #25D366 100%);
+  --wazzap-card-border: rgba(37, 211, 102, 0.18);
+  --wazzap-soft-shadow: 0 16px 45px rgba(7, 94, 84, 0.12);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #25D366;
+  --ifm-color-primary-dark: #20be5b;
+  --ifm-color-primary-darker: #1eb456;
+  --ifm-color-primary-darkest: #189447;
+  --ifm-color-primary-light: #2ae871;
+  --ifm-color-primary-lighter: #3bea7e;
+  --ifm-color-primary-lightest: #5eed96;
+  --ifm-background-color: #0f1419;
+  --ifm-background-surface-color: #151d23;
+  --docusaurus-highlighted-code-line-bg: rgba(37, 211, 102, 0.14);
+  --wazzap-card-border: rgba(37, 211, 102, 0.22);
+  --wazzap-soft-shadow: 0 16px 45px rgba(0, 0, 0, 0.32);
+}
+
+.hero--primary {
+  background: var(--wazzap-gradient);
+  color: #fff;
+}
+
+.hero--primary .hero__title {
+  letter-spacing: -0.04em;
+}
+
+.hero--primary .hero__subtitle {
+  max-width: 760px;
+  margin-inline: auto;
+  opacity: 0.95;
+}
+
+.feature-card {
+  background: var(--ifm-card-background-color, #fff);
+  border: 1px solid var(--wazzap-card-border);
+  border-radius: 18px;
+  padding: 1.75rem;
+  box-shadow: var(--wazzap-soft-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  height: 100%;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(37, 211, 102, 0.55);
+  box-shadow: 0 20px 50px rgba(7, 94, 84, 0.18);
+}
+
+[data-theme='dark'] .feature-card {
+  background: linear-gradient(180deg, rgba(37, 211, 102, 0.05), rgba(18, 28, 34, 0.9));
+}
+
+[data-theme='dark'] .feature-card:hover {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
+.hero .button--secondary {
+  border: 0;
+  color: #075E54;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero .button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--wazzap-gradient);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+
+.how-it-works {
+  background:
+    radial-gradient(circle at top left, rgba(37, 211, 102, 0.16), transparent 30rem),
+    var(--ifm-background-surface-color, #f8f9fa);
+  padding: 3rem 0;
+}
+
+[data-theme='dark'] .how-it-works {
+  background:
+    radial-gradient(circle at top left, rgba(37, 211, 102, 0.12), transparent 30rem),
+    var(--ifm-background-surface-color, #151d23);
+}
+
+.theme-code-block {
+  border: 1px solid rgba(37, 211, 102, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+[data-theme='dark'] .theme-code-block {
+  border-color: rgba(37, 211, 102, 0.24);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+}
+
+.theme-code-block pre {
+  padding: 1.25rem !important;
+}
+
+.theme-code-block code {
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.main-wrapper {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert--warning {
+  border-left-color: #f0ad4e;
+}
+
+.alert--danger {
+  border-left-color: #d9534f;
+}
+
+.navbar {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/*
+ * `backdrop-filter` creates a containing block for fixed descendants. On
+ * mobile that traps Docusaurus' fixed navigation drawer inside the 60px-tall
+ * navbar, leaving its links clipped and untappable. Keep the glass effect on
+ * desktop only, where the drawer is not used.
+ */
+@media (min-width: 997px) {
+  .navbar {
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* Ensure sidebar drawer is usable on mobile */
+@media (max-width: 996px) {
+  .navbar-sidebar {
+    /* Keep Infima's drawer, panels, and carousel translation in sync. */
+    --ifm-navbar-sidebar-width: 100vw;
+    width: var(--ifm-navbar-sidebar-width);
+    max-width: 100%;
+    min-height: 100dvh;
+  }
+
+  .navbar-sidebar__items {
+    /* The child menu panels own vertical scrolling. Clipping this moving
+       carousel causes the secondary docs menu to collapse on mobile. */
+    overflow: visible;
+  }
+
+  .navbar-sidebar__item {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .navbar-sidebar__back {
+    /* Make back button more tappable */
+    padding: 0.75rem 1rem;
+  }
+
+  /* Ensure sidebar menu items have adequate tap targets */
+  .menu__list-item {
+    padding: 0;
+  }
+
+  .menu__link {
+    padding: 0.5rem 1rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Home-page CTAs should be easy to tap without overflowing narrow screens. */
+  .hero .button {
+    width: min(100%, 18rem);
+    min-height: 48px;
+    justify-content: center;
+  }
+}
+
+.footer__link-item:hover {
+  color: #25D366;
+}
+
+/* ---- M1: heading polish ---- */
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+/* ---- M2: GitHub navbar icon ---- */
+.header-github-link {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-left: 0.25rem;
+  border-radius: 50%;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.header-github-link:hover {
+  opacity: 0.7;
+  background: var(--ifm-color-emphasis-200);
+}
+
+.header-github-link::before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 24px;
+  margin: 4px;
+  background-color: var(--ifm-navbar-link-color);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* ---- M4: admonitions ---- */
+.theme-admonition {
+  border-radius: 14px;
+  border-width: 1px;
+  box-shadow: 0 6px 20px rgba(7, 94, 84, 0.06);
+}
+
+/* ---- M4: tables ---- */
+.markdown table {
+  display: table;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.markdown table thead tr {
+  background: rgba(37, 211, 102, 0.1);
+}
+
+.markdown table thead th {
+  border: 0;
+}
+
+.markdown table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.markdown table tbody tr:hover {
+  background: rgba(37, 211, 102, 0.06);
+}
+
+/* ---- M4: anchor offset for sticky navbar ---- */
+html {
+  scroll-padding-top: 4.5rem;
+}
+
+:target {
+  scroll-margin-top: 4.5rem;
+}
+
+/* ---- L2: focus-visible ---- */
+a:focus-visible,
+button:focus-visible,
+.button:focus-visible,
+.menu__link:focus-visible,
+.navbar__link:focus-visible,
+.header-github-link:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---- L1: reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .main-wrapper {
+    animation: none;
+  }
+
+  .feature-card,
+  .feature-card:hover,
+  .hero .button,
+  .hero .button:hover {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,415 @@
+"""Direct-invoke endpoint tests — :class:`DirectInvokeServer` handler behaviour
+(auth / validation / jid normalization) and the shared :class:`ChatReinvoker`
+generalisation used for the ``[DIRECT INVOKE]`` re-invoke.
+
+Discipline (matching the suite): NO pytest-asyncio — every coroutine is driven
+with ``asyncio.run`` wrapped in ``asyncio.wait_for`` so a hang fails fast. The
+HTTP handler is exercised with ``aiohttp.test_utils.make_mocked_request`` so no
+real socket is bound.
+"""
+from __future__ import annotations
+
+import asyncio
+from collections import OrderedDict, defaultdict, deque
+
+from aiohttp.test_utils import make_mocked_request
+
+from bridge.db import tenant_db_context
+from bridge.agent.chat_reinvoker import ChatReinvoker
+from bridge.agent.direct_invoke import DirectInvokeServer, normalize_jid
+from bridge.agent.ack_hydrator import handle_action_ack
+from wasocket.protocol import AckResult
+
+
+# --------------------------------------------------------------------------- #
+# normalize_jid
+# --------------------------------------------------------------------------- #
+
+def test_normalize_jid_accepts_full_jids_and_numbers():
+  assert normalize_jid("12345@g.us") == "12345@g.us"
+  assert normalize_jid("628111@s.whatsapp.net") == "628111@s.whatsapp.net"
+  assert normalize_jid("99999@lid") == "99999@lid"
+  # bare / formatted phone numbers -> @s.whatsapp.net
+  assert normalize_jid("628123") == "628123@s.whatsapp.net"
+  assert normalize_jid("+62 812-345 (678)") == "62812345678@s.whatsapp.net"
+  # junk / empty -> None
+  assert normalize_jid("not-a-jid") is None
+  assert normalize_jid("") is None
+  assert normalize_jid(None) is None
+
+
+# --------------------------------------------------------------------------- #
+# DirectInvokeServer handler — auth / validation
+# --------------------------------------------------------------------------- #
+
+def _make_server(api_key="secret", max_chars=4000):
+  calls: list[tuple[str, str]] = []
+
+  def submit(chat_id, prompt):
+    calls.append((chat_id, prompt))
+
+  server = DirectInvokeServer(
+    submit=submit, api_key=api_key, host="127.0.0.1", port=0, max_chars=max_chars,
+  )
+  return server, calls
+
+
+async def _post(server, path, headers=None):
+  request = make_mocked_request("GET", path, headers=headers or {})
+  return await server._handle_post(request)
+
+
+def test_handler_rejects_missing_and_wrong_key():
+  async def scenario():
+    server, calls = _make_server()
+    # no key
+    resp = await _post(server, "/post?q=hi&jid=12345@g.us")
+    assert resp.status == 401
+    # wrong key
+    resp = await _post(server, "/post?q=hi&jid=12345@g.us&key=nope")
+    assert resp.status == 401
+    assert calls == []  # never submitted
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_handler_disabled_when_no_api_key():
+  async def scenario():
+    server, calls = _make_server(api_key="")
+    assert server.enabled is False
+    # Even with a (any) provided key, an unconfigured server authorizes nothing.
+    resp = await _post(server, "/post?q=hi&jid=12345@g.us&key=anything")
+    assert resp.status == 401
+    assert calls == []
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_handler_validates_q_and_jid():
+  async def scenario():
+    server, calls = _make_server()
+    # missing q
+    resp = await _post(server, "/post?jid=12345@g.us&key=secret")
+    assert resp.status == 400
+    # blank q
+    resp = await _post(server, "/post?q=%20%20&jid=12345@g.us&key=secret")
+    assert resp.status == 400
+    # missing jid
+    resp = await _post(server, "/post?q=hi&key=secret")
+    assert resp.status == 400
+    # invalid jid
+    resp = await _post(server, "/post?q=hi&jid=bogus&key=secret")
+    assert resp.status == 400
+    assert calls == []
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_handler_rejects_oversized_prompt():
+  async def scenario():
+    server, calls = _make_server(max_chars=10)
+    resp = await _post(server, "/post?q=this-is-way-too-long&jid=12345@g.us&key=secret")
+    assert resp.status == 413
+    assert calls == []
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_handler_accepts_valid_request_and_submits():
+  async def scenario():
+    server, calls = _make_server()
+    resp = await _post(server, "/post?q=ping%20me&jid=12345@g.us&key=secret")
+    assert resp.status == 202
+    assert calls == [("12345@g.us", "ping me")]
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_handler_normalizes_bare_number_jid():
+  async def scenario():
+    server, calls = _make_server()
+    resp = await _post(server, "/post?q=hello&jid=628123&key=secret")
+    assert resp.status == 202
+    assert calls == [("628123@s.whatsapp.net", "hello")]
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_handler_accepts_key_via_headers():
+  async def scenario():
+    server, calls = _make_server()
+    # X-Api-Key header
+    resp = await _post(
+      server, "/post?q=hi&jid=12345@g.us", headers={"X-Api-Key": "secret"}
+    )
+    assert resp.status == 202
+    # Authorization: Bearer header
+    resp = await _post(
+      server, "/post?q=hi&jid=12345@g.us", headers={"Authorization": "Bearer secret"}
+    )
+    assert resp.status == 202
+    assert len(calls) == 2
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_disabled_server_start_is_noop():
+  async def scenario():
+    server, calls = _make_server(api_key="")
+    # start() must be a safe no-op when disabled (fail-closed), and stop() must
+    # be safe to call regardless.
+    await server.start()
+    assert server._site is None and server._runner is None
+    await server.stop()
+    assert calls == []
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_endpoint_end_to_end_real_http():
+  """Drive the real aiohttp request pipeline (routing + query parsing) through a
+  ``TestClient`` rather than only the handler in isolation."""
+  from aiohttp.test_utils import TestClient, TestServer
+
+  async def scenario():
+    server, calls = _make_server()
+    client = TestClient(TestServer(server._build_app()))
+    await client.start_server()
+    try:
+      # happy path
+      resp = await client.get("/post", params={"q": "ping", "jid": "628123", "key": "secret"})
+      assert resp.status == 202
+      body = await resp.json()
+      assert body["jid"] == "628123@s.whatsapp.net"
+      # wrong key -> 401
+      resp = await client.get("/post", params={"q": "ping", "jid": "628123", "key": "bad"})
+      assert resp.status == 401
+      # health
+      resp = await client.get("/health")
+      assert resp.status == 200
+      assert calls == [("628123@s.whatsapp.net", "ping")]
+    finally:
+      await client.close()
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=15))
+
+
+def test_endpoint_post_json_body():
+  """POST callers may send q/jid/key in a JSON body (documented convenience)."""
+  from aiohttp.test_utils import TestClient, TestServer
+
+  async def scenario():
+    server, calls = _make_server()
+    client = TestClient(TestServer(server._build_app()))
+    await client.start_server()
+    try:
+      resp = await client.post(
+        "/post", json={"q": "from body", "jid": "12345@g.us", "key": "secret"}
+      )
+      assert resp.status == 202
+      assert calls == [("12345@g.us", "from body")]
+    finally:
+      await client.close()
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=15))
+
+
+# --------------------------------------------------------------------------- #
+# ChatReinvoker — direct-invoke labels
+# --------------------------------------------------------------------------- #
+
+class _FakeResponder:
+  def __init__(self):
+    self.calls = []
+
+  async def generate(self, history, current, **kwargs):
+    self.calls.append({"history": list(history), "current": current, "kwargs": kwargs})
+    return None  # no reply -> no dispatch, reinvoke returns False
+
+
+class _FakeWs:
+  def __init__(self):
+    self.presence = []
+
+  async def send_presence(self, chat_id, presence):
+    self.presence.append((chat_id, presence))
+
+
+def test_reinvoker_injects_direct_invoke_system_turn_and_block(tmp_path):
+  async def scenario():
+    with tenant_db_context(str(tmp_path)):
+      responder = _FakeResponder()
+      per_chat = defaultdict(deque)
+      per_chat_lock = defaultdict(asyncio.Lock)
+      reinvoker = ChatReinvoker(
+        ws=_FakeWs(),
+        responder=responder,
+        per_chat=per_chat,
+        per_chat_lock=per_chat_lock,
+        get_prompt=lambda c: None,
+      )
+      chat_id = "628999@s.whatsapp.net"
+      result = await reinvoker.reinvoke(
+        chat_id,
+        "ping me from my watch",
+        system_label="DIRECT INVOKE",
+        block_title="Direct instruction firing now",
+        block_instructions="Instructions for this re-invoke:\n- do it now.",
+        log_kind="direct invoke",
+      )
+      # No reply produced -> False, but the model WAS invoked with the block.
+      assert result is False
+      assert len(responder.calls) == 1
+      kwargs = responder.calls[0]["kwargs"]
+      block = kwargs["scheduled_task_block"]
+      assert "## Direct instruction firing now" in block
+      assert "[DIRECT INVOKE]" in block
+      assert "ping me from my watch" in block
+      assert kwargs["chat_type"] == "private"  # @s.whatsapp.net
+      # the [DIRECT INVOKE] #system turn was appended to history
+      sys_turns = [m for m in per_chat[chat_id] if m.role == "system"]
+      assert sys_turns and "[DIRECT INVOKE]" in (sys_turns[-1].text or "")
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+# --------------------------------------------------------------------------- #
+# ChatReinvoker — send registration + action_ack hydration
+#
+# Regression for: a /schedule-task or direct-invoke (port 8090) reply was
+# appended to history as a provisional ``context_msg_id="pending"`` entry but
+# never registered in ``pending_send_request_chat``, so the ``action_ack``
+# hydrator could never upgrade it to its real 6-digit id (it stayed "pending"
+# forever, unlike the normal message path and the sub-agent task-complete
+# path). The reinvoker now takes the account-shared pending map and registers
+# each send, so the entry hydrates exactly like every other send path.
+# --------------------------------------------------------------------------- #
+
+class _ReplyMsg:
+  """Minimal LLM2 reply: plain-text ``content`` and no tool calls, so
+  ``_extract_actions`` yields exactly one ``send_message`` action."""
+
+  def __init__(self, content: str):
+    self.content = content
+    self.tool_calls = None
+
+
+class _DispatchingResponder:
+  """Responder that returns a real text reply so the reinvoker DISPATCHES a
+  send_message (unlike ``_FakeResponder`` above, which returns ``None``)."""
+
+  def __init__(self, reply_text: str):
+    self._reply_text = reply_text
+    self.calls: list = []
+
+  async def generate(self, history, current, **kwargs):
+    self.calls.append({"kwargs": kwargs})
+    return _ReplyMsg(self._reply_text)
+
+
+class _CapturingWs:
+  """Fake gateway socket that records the outbound send_message calls (and
+  satisfies ``typing_indicator``'s presence pings)."""
+
+  def __init__(self):
+    self.sent: list[dict] = []
+    self.presence: list = []
+
+  async def send_presence(self, chat_id, presence):
+    self.presence.append((chat_id, presence))
+
+  async def send_message(self, chat_id, text=None, *, reply_to=None, request_id=None, attachments=None):
+    self.sent.append({
+      "chat_id": chat_id, "text": text, "reply_to": reply_to, "request_id": request_id,
+    })
+
+
+def test_reinvoke_send_registers_pending_and_hydrates_on_ack(tmp_path):
+  async def scenario():
+    with tenant_db_context(str(tmp_path)):
+      pending: OrderedDict = OrderedDict()
+      ws = _CapturingWs()
+      responder = _DispatchingResponder("ping from your watch!")
+      per_chat = defaultdict(deque)
+      per_chat_lock = defaultdict(asyncio.Lock)
+      reinvoker = ChatReinvoker(
+        ws=ws,
+        responder=responder,
+        per_chat=per_chat,
+        per_chat_lock=per_chat_lock,
+        get_prompt=lambda c: None,
+        pending_send_request_chat=pending,
+      )
+      chat_id = "628999@s.whatsapp.net"
+      result = await reinvoker.reinvoke(
+        chat_id,
+        "remind me",
+        system_label="DIRECT INVOKE",
+        block_title="Direct instruction firing now",
+        block_instructions="do it now.",
+        log_kind="direct invoke",
+      )
+      # A reply was produced and dispatched.
+      assert result is True
+      assert len(ws.sent) == 1
+      rid = ws.sent[0]["request_id"]
+      # The send is registered for hydration (the actual fix).
+      assert pending.get(rid) == chat_id
+      # The provisional assistant entry is in history, still "pending".
+      prov = [m for m in per_chat[chat_id] if m.role == "assistant"]
+      assert len(prov) == 1
+      assert prov[0].context_msg_id == "pending"
+      assert prov[0].message_id == f"local-send-{rid}"
+
+      # Drive the matching action_ack -> the provisional id hydrates to the
+      # real 6-digit contextMsgId, exactly like the subagent / message paths.
+      ack = AckResult(
+        request_id=rid,
+        action="send_message",
+        ok=True,
+        detail="sent",
+        result={"sent": [{"kind": "text", "contextMsgId": "000123"}]},
+      )
+      await handle_action_ack(
+        ack,
+        per_chat=per_chat,
+        per_chat_lock=per_chat_lock,
+        pending_send_request_chat=pending,
+        pending_subagent_attachments=OrderedDict(),
+        pending_run_command_chat=OrderedDict(),
+        media_paths_by_chat=defaultdict(dict),
+      )
+      assert prov[0].context_msg_id == "000123"
+      assert rid not in pending
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))
+
+
+def test_reinvoke_without_pending_map_still_appends_but_stays_provisional(tmp_path):
+  """Back-compat: when no pending map is injected (legacy / unit fakes), the
+  reply is still appended to history — it just never hydrates (stays
+  "pending"). This documents the default-None behaviour."""
+  async def scenario():
+    with tenant_db_context(str(tmp_path)):
+      ws = _CapturingWs()
+      responder = _DispatchingResponder("hello")
+      per_chat = defaultdict(deque)
+      per_chat_lock = defaultdict(asyncio.Lock)
+      reinvoker = ChatReinvoker(
+        ws=ws,
+        responder=responder,
+        per_chat=per_chat,
+        per_chat_lock=per_chat_lock,
+        get_prompt=lambda c: None,
+      )  # no pending_send_request_chat
+      chat_id = "628999@s.whatsapp.net"
+      result = await reinvoker.reinvoke(
+        chat_id, "x", system_label="DIRECT INVOKE",
+        block_title="t", block_instructions="i", log_kind="direct invoke",
+      )
+      assert result is True
+      prov = [m for m in per_chat[chat_id] if m.role == "assistant"]
+      assert len(prov) == 1
+      assert prov[0].context_msg_id == "pending"
+
+  asyncio.run(asyncio.wait_for(scenario(), timeout=10))

@@ -1,0 +1,45 @@
+{
+  "name": "BelaSayank",
+  "version": "1.2.0",
+  "compatibilityVersion": 1,
+  "description": "WhatsApp → LLM gateway using Baileys v7 and outbound WebSocket to LLM service.",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit && ruff check python",
+    "test": "node --test --import tsx 'tests/**/*.test.ts'"
+  },
+  "keywords": [
+    "whatsapp",
+    "baileys",
+    "websocket",
+    "llm"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "baileys": "7.0.0-rc14",
+    "better-sqlite3": "12.11.1",
+    "canvas": "^3.2.3",
+    "dotenv": "^16.4.5",
+    "fluent-ffmpeg": "^2.1.3",
+    "fs-extra": "^11.2.0",
+    "node-webpmux": "^3.2.1",
+    "pino": "^8.21.0",
+    "sharp": "^0.33.5",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13",
+    "@types/fluent-ffmpeg": "2.1.28",
+    "@types/fs-extra": "11.0.4",
+    "@types/node": "25.9.2",
+    "@types/ws": "8.18.1",
+    "tsx": "4.22.4",
+    "typescript": "6.0.3"
+  },
+  "packageManager": "pnpm@10.30.3"
+}
